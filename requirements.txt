@@ -1,0 +1,16 @@
+# AI Agent Dependencies
+# 데이터 처리
+pandas==2.2.2
+numpy==1.26.4
+
+# LSTM 모델
+tensorflow==2.16.1
+
+# Prometheus 연동
+requests==2.32.3
+
+# Docker 제어
+docker==7.1.0
+
+# 모델 저장/로드 (스케일러 등)
+joblib==1.4.2

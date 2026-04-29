@@ -1,0 +1,15 @@
+.DS_Store
+*.pyc
+__pycache__/
+.env
+
+# AI: 학습된 모델과 데이터셋은 용량이 커서 git에 올리지 않음
+models/*.h5
+models/*.pkl
+datasets/
+
+# Python
+*.egg-info/
+.venv/
+venv/
+.ipynb_checkpoints/

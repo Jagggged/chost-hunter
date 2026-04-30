@@ -3,8 +3,10 @@
 pandas==2.2.2
 numpy==1.26.4
 
-# LSTM 모델
-tensorflow==2.16.1
+# LSTM 모델 (PyTorch)
+# - 동적 그래프로 Online Learning(Fine-tuning) 시 학습 루프 제어가 유연함
+# - Watchdog 등 커스텀 로직 통합이 용이
+torch==2.3.0
 
 # Prometheus 연동
 requests==2.32.3
@@ -12,5 +14,5 @@ requests==2.32.3
 # Docker 제어
 docker==7.1.0
 
-# 모델 저장/로드 (스케일러 등)
+# 스케일러 저장/로드
 joblib==1.4.2

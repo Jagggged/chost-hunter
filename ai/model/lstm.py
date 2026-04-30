@@ -1,52 +1,74 @@
 """
-Lightweight LSTM 모델 정의
+Lightweight LSTM 모델 정의 (PyTorch)
 컨테이너 리소스 사용량의 시계열을 입력받아 미래 사용량을 예측한다.
 
 Lightweight 설계 이유:
 - 추론 자체가 시스템 부하가 되면 안 됨 (오버헤드 최소화)
-- 2층 LSTM (64 -> 32 unit) + Dense
+- 2층 LSTM (64 -> 32 unit) + Linear
+
+PyTorch를 선택한 이유:
+- 동적 그래프로 Online Learning 시 학습 루프 제어가 유연함
+- Watchdog 등 커스텀 로직과 통합이 용이함
 """
 
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
+import torch
+import torch.nn as nn
 
 from ai import config
 
 
-def build_model(
-    window_size: int = config.WINDOW_SIZE,
-    n_features: int = config.N_FEATURES,
-    horizon: int = config.PREDICT_HORIZON,
-    units: list[int] = config.LSTM_UNITS,
-    dropout: float = config.DROPOUT_RATE,
-) -> Sequential:
+class LightweightLSTM(nn.Module):
     """
-    LSTM 모델을 생성한다.
-
-    Args:
-        window_size: 입력 시계열 길이
-        n_features: 입력 피처 수 (CPU, Memory 등)
-        horizon: 출력 시계열 길이 (미래 예측 step 수)
-        units: LSTM 레이어별 unit 수
-        dropout: Dropout 비율
-
-    Returns:
-        컴파일되지 않은 Keras Sequential 모델
+    2층 LSTM + Linear 출력
+    Input:  (batch, window_size, n_features)
+    Output: (batch, horizon, n_features)
     """
+
+    def __init__(
+        self,
+        n_features: int = config.N_FEATURES,
+        horizon: int = config.PREDICT_HORIZON,
+        units: list[int] = config.LSTM_UNITS,
+        dropout: float = config.DROPOUT_RATE,
+    ):
+        super().__init__()
+        self.n_features = n_features
+        self.horizon = horizon
+
+        # TODO: 구현
+        # self.lstm1 = nn.LSTM(input_size=n_features, hidden_size=units[0],
+        #                      batch_first=True)
+        # self.dropout1 = nn.Dropout(dropout)
+        # self.lstm2 = nn.LSTM(input_size=units[0], hidden_size=units[1],
+        #                      batch_first=True)
+        # self.dropout2 = nn.Dropout(dropout)
+        # self.fc = nn.Linear(units[1], horizon * n_features)
+        raise NotImplementedError
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x: (batch, window_size, n_features)
+        Returns:
+            (batch, horizon, n_features)
+        """
+        # TODO: 구현
+        # out, _ = self.lstm1(x)
+        # out = self.dropout1(out)
+        # _, (h, _) = self.lstm2(out)          # 마지막 hidden state
+        # out = self.dropout2(h[-1])            # (batch, units[1])
+        # out = self.fc(out)                    # (batch, horizon * n_features)
+        # return out.view(-1, self.horizon, self.n_features)
+        raise NotImplementedError
+
+
+def build_model() -> LightweightLSTM:
+    """모델 인스턴스 생성"""
     # TODO: 구현
-    # model = Sequential([
-    #     LSTM(units[0], return_sequences=True, input_shape=(window_size, n_features)),
-    #     Dropout(dropout),
-    #     LSTM(units[1]),
-    #     Dropout(dropout),
-    #     Dense(horizon * n_features),
-    # ])
+    # return LightweightLSTM()
     raise NotImplementedError
 
 
-def compile_model(model: Sequential, learning_rate: float = config.LEARNING_RATE):
-    """
-    모델 컴파일 (loss, optimizer 설정).
-    """
-    # TODO: 구현
-    raise NotImplementedError
+def get_device() -> torch.device:
+    """GPU 사용 가능하면 cuda, 아니면 cpu"""
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")

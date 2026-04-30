@@ -38,5 +38,5 @@ DOCKER_SOCKET = "unix://var/run/docker.sock"
 
 # ── 경로 ──────────────────────────────────────────────────
 MODEL_DIR = "models"
-PRETRAINED_MODEL_PATH = f"{MODEL_DIR}/pretrained.h5"
+PRETRAINED_MODEL_PATH = f"{MODEL_DIR}/pretrained.pt"
 SCALER_PATH = f"{MODEL_DIR}/scaler.pkl"

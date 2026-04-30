@@ -19,7 +19,7 @@ from ai import config
 
 def main():
     # TODO: 구현
-    # 1. model = load_model(config.PRETRAINED_MODEL_PATH)
+    # 1. model = load_pretrained(config.PRETRAINED_MODEL_PATH)   # PyTorch state_dict 로드, eval 모드
     # 2. watchdog = Watchdog(); watchdog.start()
     # 3. while True:
     #        for container in target_containers:

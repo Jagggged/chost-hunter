@@ -14,6 +14,7 @@ DROPOUT_RATE = 0.2
 BATCH_SIZE = 64
 EPOCHS = 50
 LEARNING_RATE = 0.001
+WEIGHT_DECAY = 1e-5         # L2 정규화 (과적합 방지)
 VALIDATION_SPLIT = 0.2
 
 # ── Online Learning (Fine-tuning) ────────────────────────
@@ -22,6 +23,13 @@ FINETUNE_EPOCHS = 5             # fine-tune 시 적은 epoch
 
 # ── 추론 설정 ─────────────────────────────────────────────
 INFERENCE_INTERVAL_SEC = 300    # 5분마다 추론
+INFERENCE_STEP_SEC = 300        # Prometheus 쿼리 step (학습 데이터 granularity와 일치)
+
+# torch.compile JIT 가속 활성화 여부.
+# - True: 첫 호출 시 컴파일 오버헤드(10~30s) 후 추론 빨라짐
+# - False: eager mode (기본). Windows/디버깅 시 안전
+# 환경에서 측정 후 효과 있으면 True로 변경.
+USE_TORCH_COMPILE = False
 
 # ── 안전 장치 ─────────────────────────────────────────────
 SAFETY_BUFFER = 0.30            # 예측값 위에 30% 버퍼

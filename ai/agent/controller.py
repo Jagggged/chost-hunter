@@ -2,6 +2,11 @@
 Docker 컨테이너 리소스 제어
 Docker SDK for Python을 통해 컨테이너의 cpu_quota, mem_limit을 동적으로 조정한다.
 CLI 호출(docker update) 대신 SDK를 쓰는 이유는 안정성/에러 핸들링이 좋기 때문이다.
+
+CPU quota 변환:
+    Docker는 CPU를 'cpu_quota / cpu_period' 비율로 제한한다.
+    cpu_period 기본값은 100000 (100ms 단위), 따라서 1코어 = 100000 quota.
+    예: cpu_quota=0.5 코어 → 50000 quota
 """
 
 import docker
@@ -9,10 +14,13 @@ import docker
 from ai import config
 
 
+CPU_PERIOD_DEFAULT = 100000   # Docker 기본 CPU period (us)
+
+
 _client = None
 
 
-def get_client():
+def get_client() -> docker.DockerClient:
     """Docker 클라이언트 싱글톤"""
     global _client
     if _client is None:
@@ -27,27 +35,74 @@ def update_limits(container_name: str, cpu_quota: float, memory_bytes: int) -> d
 
     Args:
         container_name: 대상 컨테이너 이름
-        cpu_quota: CPU 코어 단위 (예: 0.5)
+        cpu_quota: CPU 코어 단위 (예: 0.5 = 반 코어)
         memory_bytes: 메모리 limit (bytes)
 
     Returns:
-        이전 설정값 (롤백용)
+        이전 설정값 (롤백용) {"cpu_quota": int(us), "memory_bytes": int}
     """
-    # TODO: 구현
-    # client = get_client()
-    # container = client.containers.get(container_name)
-    # prev = {"cpu_quota": container.attrs["HostConfig"]["CpuQuota"],
-    #         "memory_bytes": container.attrs["HostConfig"]["Memory"]}
-    # container.update(cpu_quota=int(cpu_quota * 100000),
-    #                  mem_limit=memory_bytes)
-    # return prev
-    raise NotImplementedError
+    client = get_client()
+    container = client.containers.get(container_name)
+
+    host_config = container.attrs["HostConfig"]
+    prev = {
+        "cpu_quota": host_config.get("CpuQuota", 0),     # 0 = unlimited
+        "memory_bytes": host_config.get("Memory", 0),    # 0 = unlimited
+    }
+
+    new_cpu_quota = int(cpu_quota * CPU_PERIOD_DEFAULT)
+    container.update(cpu_quota=new_cpu_quota, mem_limit=memory_bytes)
+    return prev
+
+
+def rollback_limits(container_name: str, prev: dict) -> None:
+    """이전 limit으로 즉시 복구한다 (Watchdog에서 호출)."""
+    client = get_client()
+    container = client.containers.get(container_name)
+    container.update(
+        cpu_quota=prev.get("cpu_quota", 0),
+        mem_limit=prev.get("memory_bytes", 0) or -1,   # -1 = unlimited
+    )
 
 
 def get_current_usage(container_name: str) -> dict:
     """
     현재 컨테이너의 실시간 사용량 (Watchdog용).
     Prometheus를 거치지 않고 Docker에서 직접 읽어 지연을 최소화한다.
+
+    Returns:
+        {"cpu_pct": float (0~1), "mem_pct": float (0~1)}
+        limit이 없으면 mem_pct는 0으로 반환.
     """
-    # TODO: 구현
-    raise NotImplementedError
+    client = get_client()
+    container = client.containers.get(container_name)
+    stats = container.stats(stream=False)
+
+    # CPU 사용률 계산: Docker stats 공식
+    cpu_delta = (stats["cpu_stats"]["cpu_usage"]["total_usage"]
+                 - stats["precpu_stats"]["cpu_usage"]["total_usage"])
+    system_delta = (stats["cpu_stats"]["system_cpu_usage"]
+                    - stats["precpu_stats"].get("system_cpu_usage", 0))
+    online_cpus = stats["cpu_stats"].get("online_cpus", 1) or 1
+
+    cpu_pct = 0.0
+    if system_delta > 0 and cpu_delta > 0:
+        cpu_pct = (cpu_delta / system_delta) * online_cpus
+
+    # 메모리 사용률
+    mem_usage = stats["memory_stats"].get("usage", 0)
+    mem_limit = stats["memory_stats"].get("limit", 0)
+    mem_pct = (mem_usage / mem_limit) if mem_limit > 0 else 0.0
+
+    return {"cpu_pct": cpu_pct, "mem_pct": mem_pct}
+
+
+def list_target_containers(exclude: list[str] = None) -> list[str]:
+    """
+    감시 대상 컨테이너 이름 목록을 반환한다.
+    인프라(cAdvisor, Prometheus, Grafana, ai-agent 등)는 제외한다.
+    """
+    if exclude is None:
+        exclude = ["cadvisor", "prometheus", "grafana", "ai-agent"]
+    client = get_client()
+    return [c.name for c in client.containers.list() if c.name not in exclude]

@@ -17,6 +17,10 @@ LEARNING_RATE = 0.001
 WEIGHT_DECAY = 1e-5         # L2 정규화 (과적합 방지)
 VALIDATION_SPLIT = 0.2
 
+# Early Stopping: val_loss가 PATIENCE epoch 동안 개선되지 않으면 학습 중단
+EARLY_STOPPING_PATIENCE = 10
+EARLY_STOPPING_MIN_DELTA = 1e-5  # 이 값 이상 줄어야 "개선"으로 인정
+
 # ── Online Learning (Fine-tuning) ────────────────────────
 FINETUNE_INTERVAL_SEC = 3600   # 1시간마다 fine-tune
 FINETUNE_EPOCHS = 5             # fine-tune 시 적은 epoch
@@ -48,3 +52,5 @@ DOCKER_SOCKET = "unix://var/run/docker.sock"
 MODEL_DIR = "models"
 PRETRAINED_MODEL_PATH = f"{MODEL_DIR}/pretrained.pt"
 SCALER_PATH = f"{MODEL_DIR}/scaler.pkl"
+TRAINING_HISTORY_PATH = f"{MODEL_DIR}/training_history.json"
+TRAINING_CURVE_PATH = f"{MODEL_DIR}/training_curve.png"

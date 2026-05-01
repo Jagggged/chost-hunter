@@ -1,0 +1,29 @@
+# Prometheus 설정
+# cAdvisor에서 컨테이너 메트릭을 15초 간격으로 스크래핑한다.
+
+global:
+  scrape_interval: 15s       # 메트릭 수집 주기 (기본값)
+  evaluation_interval: 15s   # 룰 평가 주기
+
+# Alert 규칙 파일 경로
+rule_files:
+  - "/etc/prometheus/alert_rules.yml"
+
+# Alertmanager 연동 설정
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
+scrape_configs:
+  # Prometheus 자체 상태 모니터링
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # cAdvisor로부터 컨테이너 메트릭 수집
+  # docker-compose 네트워크 내에서 서비스명으로 접근 가능
+  - job_name: "cadvisor"
+    scrape_interval: 5s      # 컨테이너 메트릭은 더 자주 수집
+    static_configs:
+      - targets: ["cadvisor:8080"]

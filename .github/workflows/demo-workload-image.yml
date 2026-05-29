@@ -1,0 +1,111 @@
+name: Demo Workload Docker Image
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+    paths:
+      - Dockerfile.demo-workloads
+      - docker-compose.demo.yml
+      - workloads/**
+      - docs/demo-workloads.md
+      - .github/workflows/demo-workload-image.yml
+
+  push:
+    branches:
+      - develop
+      - main
+      - feat/demo-workloads
+    paths:
+      - Dockerfile.demo-workloads
+      - docker-compose.demo.yml
+      - workloads/**
+      - docs/demo-workloads.md
+      - .github/workflows/demo-workload-image.yml
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  validate:
+    name: Validate demo workloads
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compile workload scripts
+        run: |
+          python -m py_compile \
+            workloads/idle.py \
+            workloads/cpu_wave.py \
+            workloads/memory_wave.py \
+            workloads/mixed_wave.py \
+            workloads/memory_leak.py
+
+      - name: Validate Docker Compose demo config
+        run: docker compose -f docker-compose.yml -f docker-compose.demo.yml config
+
+  build:
+    name: Build and publish demo workload image
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set image tags
+        shell: bash
+        run: |
+          IMAGE="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/chost-hunter-demo-workloads"
+          SHORT_SHA="${GITHUB_SHA::7}"
+
+          {
+            echo "IMAGE_NAME=$IMAGE"
+            echo "IMAGE_TAGS<<EOF"
+            echo "$IMAGE:$SHORT_SHA"
+
+            if [[ "$GITHUB_REF_NAME" == "develop" || "$GITHUB_REF_NAME" == "feat/demo-workloads" ]]; then
+              echo "$IMAGE:develop"
+            fi
+
+            if [[ "$GITHUB_REF_NAME" == "main" ]]; then
+              echo "$IMAGE:latest"
+            fi
+
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.demo-workloads
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.IMAGE_TAGS }}
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

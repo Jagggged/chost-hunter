@@ -1,50 +1,40 @@
 services:
   demo-idle:
-    image: python:3.11-slim
+    image: ${DEMO_WORKLOAD_IMAGE:-ghcr.io/jagggged/chost-hunter-demo-workloads:develop}
     container_name: demo-idle
-    command: python /app/idle.py
-    volumes:
-      - ./workloads:/app:ro
+    command: python /app/workloads/idle.py
     labels:
       - "chost-hunter.policy=advisory"
     restart: unless-stopped
 
   demo-cpu-wave:
-    image: python:3.11-slim
+    image: ${DEMO_WORKLOAD_IMAGE:-ghcr.io/jagggged/chost-hunter-demo-workloads:develop}
     container_name: demo-cpu-wave
-    command: python /app/cpu_wave.py
-    volumes:
-      - ./workloads:/app:ro
+    command: python /app/workloads/cpu_wave.py
     labels:
       - "chost-hunter.policy=advisory"
     restart: unless-stopped
 
   demo-memory-wave:
-    image: python:3.11-slim
+    image: ${DEMO_WORKLOAD_IMAGE:-ghcr.io/jagggged/chost-hunter-demo-workloads:develop}
     container_name: demo-memory-wave
-    command: python /app/memory_wave.py
-    volumes:
-      - ./workloads:/app:ro
+    command: python /app/workloads/memory_wave.py
     labels:
       - "chost-hunter.policy=advisory"
     restart: unless-stopped
 
   demo-memory-leak:
-    image: python:3.11-slim
+    image: ${DEMO_WORKLOAD_IMAGE:-ghcr.io/jagggged/chost-hunter-demo-workloads:develop}
     container_name: demo-memory-leak
-    command: python /app/memory_leak.py
-    volumes:
-      - ./workloads:/app:ro
+    command: python /app/workloads/memory_leak.py
     labels:
       - "chost-hunter.policy=auto"
     restart: unless-stopped
 
   demo-mixed-wave:
-    image: python:3.11-slim
+    image: ${DEMO_WORKLOAD_IMAGE:-ghcr.io/jagggged/chost-hunter-demo-workloads:develop}
     container_name: demo-mixed-wave
-    command: python /app/mixed_wave.py
-    volumes:
-      - ./workloads:/app:ro
+    command: python /app/workloads/mixed_wave.py
     labels:
       - "chost-hunter.policy=auto"
     restart: unless-stopped

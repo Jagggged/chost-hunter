@@ -14,8 +14,16 @@ depending on `stress-ng` or fixed 100% load.
 | `demo-memory-leak` | `auto` | Capped leak pattern that adds 50 MB every 30 seconds up to 700 MB and does not release it. |
 | `demo-mixed-wave` | `auto` | Combined CPU and memory wave that Chost Hunter can manage automatically. |
 
-All containers use the `python:3.11-slim` image and mount scripts from
-`./workloads` into `/app`.
+All containers use the published demo workload image:
+
+```text
+ghcr.io/jagggged/chost-hunter-demo-workloads:develop
+```
+
+The image is built by `.github/workflows/demo-workload-image.yml` from
+`Dockerfile.demo-workloads`. Compose only pulls the image and selects a workload
+script with each service command, so a presentation machine does not need to
+bind-mount local workload files.
 
 ## Run
 
@@ -23,6 +31,14 @@ Start the normal stack with the demo overlay:
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d
+```
+
+To test a locally built image instead of the published image:
+
+```bash
+docker build -f Dockerfile.demo-workloads -t chost-hunter-demo-workloads:local .
+DEMO_WORKLOAD_IMAGE=chost-hunter-demo-workloads:local \
+  docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d
 ```
 
 Confirm the demo containers are running:
@@ -159,7 +175,13 @@ docker pull python:3.11-slim
 docker compose -f docker-compose.yml -f docker-compose.demo.yml up -d
 ```
 
-If the network is unreliable, pre-pull the image before the presentation.
+If the network is unreliable, pre-pull the demo workload image and the Python
+base image before the presentation:
+
+```bash
+docker pull ghcr.io/jagggged/chost-hunter-demo-workloads:develop
+docker pull python:3.11-slim
+```
 
 ### CPU is too low
 

@@ -1,0 +1,50 @@
+services:
+  demo-mixed-wave:
+    image: python:3.11-slim
+    container_name: demo-mixed-wave
+    labels:
+      - "chost-hunter.policy=auto"
+    cpus: "0.20"
+    mem_limit: 256m
+    command:
+      - python
+      - -c
+      - |
+        import math
+        import time
+
+        payload = []
+        tick = 0
+        while True:
+            size_mb = 64 + int((math.sin(tick / 8) + 1) * 48)
+            payload = [b"x" * 1024 * 1024 for _ in range(size_mb)]
+            end = time.time() + 1.0 + (math.sin(tick / 5) + 1) * 0.8
+            while time.time() < end:
+                math.sqrt(tick * tick + 1)
+            time.sleep(1)
+            tick += 1
+
+  demo-advisory-wave:
+    image: python:3.11-slim
+    container_name: demo-advisory-wave
+    labels:
+      - "chost-hunter.policy=advisory"
+    cpus: "0.20"
+    mem_limit: 256m
+    command:
+      - python
+      - -c
+      - |
+        import math
+        import time
+
+        payload = []
+        tick = 0
+        while True:
+            size_mb = 48 + int((math.cos(tick / 10) + 1) * 32)
+            payload = [b"y" * 1024 * 1024 for _ in range(size_mb)]
+            end = time.time() + 0.5 + (math.cos(tick / 6) + 1) * 0.6
+            while time.time() < end:
+                math.sin(tick)
+            time.sleep(2)
+            tick += 1

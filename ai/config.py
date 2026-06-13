@@ -166,19 +166,14 @@ SETTINGS_PATH = f"{LOG_DIR}/settings.json"
 
 # ── Slack notifications ───────────────────────────────────
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL", "")
-SLACK_NOTIFY_ENABLED = os.getenv("SLACK_NOTIFY_ENABLED", "true").lower() == "true"
+SLACK_NOTIFY_ENABLED = _env_bool("SLACK_NOTIFY_ENABLED", True)
+SLACK_NOTIFY_ONLY_CHANGES = _env_bool("SLACK_NOTIFY_ONLY_CHANGES", True)
 SLACK_NOTIFY_STATUSES = {
     "recommended",
     "applied",
     "failed",
-    "policy_updated",
-    "autopilot_updated",
-    "finetune_updated",
-    "finetune_settings_updated",
     "notification_test",
     "rollback_failed",
     "rolled_back",
-    "rolled_back",
-    "rollback_failed",
 }
 SLACK_TIMEOUT_SEC = 5

@@ -79,3 +79,20 @@ def test_watchdog_settings_can_be_overridden_from_env(monkeypatch):
     monkeypatch.delenv("WATCHDOG_INTERVAL_SEC", raising=False)
     monkeypatch.delenv("WATCHDOG_THRESHOLD", raising=False)
     importlib.reload(config_module)
+
+
+def test_slack_settings_can_be_overridden_from_env(monkeypatch):
+    monkeypatch.setenv("SLACK_NOTIFY_ENABLED", "false")
+    monkeypatch.setenv("SLACK_NOTIFY_ONLY_CHANGES", "false")
+    monkeypatch.setenv("SLACK_WEBHOOK_URL", "https://hooks.slack.com/services/test")
+
+    config = importlib.reload(config_module)
+
+    assert config.SLACK_NOTIFY_ENABLED is False
+    assert config.SLACK_NOTIFY_ONLY_CHANGES is False
+    assert config.SLACK_WEBHOOK_URL == "https://hooks.slack.com/services/test"
+
+    monkeypatch.delenv("SLACK_NOTIFY_ENABLED", raising=False)
+    monkeypatch.delenv("SLACK_NOTIFY_ONLY_CHANGES", raising=False)
+    monkeypatch.delenv("SLACK_WEBHOOK_URL", raising=False)
+    importlib.reload(config_module)

@@ -27,6 +27,91 @@ def _format_limits(limits: dict | None) -> str:
     return f"CPU {_format_cpu(cpu)}, Memory {_format_bytes(mem)}"
 
 
+def _mode_label(action: dict) -> str:
+    status = action.get("status")
+    policy = action.get("policy")
+    if status in ("rolled_back", "rollback_failed"):
+        return "rollback"
+    if policy == "manual":
+        return "manual"
+    if policy == "auto":
+        return "auto"
+    if policy == "advisory":
+        return "advisory"
+    return str(policy or status or "unknown")
+
+
+def _title_for_action(action: dict) -> str:
+    status = action.get("status")
+    mode = _mode_label(action)
+    if status == "applied":
+        return "Chost Hunter Auto Applied"
+    if status == "recommended":
+        return "Chost Hunter Recommendation"
+    if status == "rolled_back":
+        return "Chost Hunter Rollback"
+    if status == "rollback_failed":
+        return "Chost Hunter Rollback Failed"
+    if status == "failed":
+        return "Chost Hunter Action Failed"
+    if status == "notification_test":
+        return "Chost Hunter Slack Test"
+    return f"Chost Hunter {mode.title()}"
+
+
+def _action_result(action: dict) -> str:
+    status = action.get("status")
+    if status == "recommended":
+        return "Recommendation only"
+    if status == "applied":
+        return "Docker limit updated successfully"
+    if status == "rolled_back":
+        return "Rollback completed"
+    if status == "rollback_failed":
+        return "Rollback failed"
+    if status == "failed":
+        return "Action failed"
+    if status == "notification_test":
+        return "Slack notification test"
+    return str(status or "unknown")
+
+
+def _primary_limits(action: dict) -> tuple[str, dict | None]:
+    if action.get("applied_limits"):
+        return "Applied", action.get("applied_limits")
+    if action.get("recommended_limits"):
+        return "Recommended", action.get("recommended_limits")
+    if action.get("current_limits"):
+        return "Current", action.get("current_limits")
+    return "Limit", None
+
+
+def _baseline_limits(action: dict) -> tuple[str, dict | None]:
+    if action.get("previous_limits"):
+        return "Previous", action.get("previous_limits")
+    if action.get("current_limits"):
+        return "Current", action.get("current_limits")
+    return "Previous", None
+
+
+def _limit_fields(prefix: str, limits: dict | None) -> list[dict]:
+    cpu_label = f"{prefix} CPU"
+    memory_label = f"{prefix} Memory"
+    if prefix in ("Previous", "Current"):
+        cpu_label = f"{prefix} CPU Limit"
+        memory_label = f"{prefix} Memory Limit"
+    return [
+        {
+            "type": "mrkdwn",
+            "text": f"*{cpu_label}*\n{_format_cpu((limits or {}).get('cpu_quota'))}",
+        },
+        {
+            "type": "mrkdwn",
+            "text": f"*{memory_label}*\n{_format_bytes((limits or {}).get('memory_bytes'))}",
+        },
+    ]
+
+
 def _status_label(status: str) -> str:
     labels = {
         "applied": "적용됨",
@@ -83,30 +168,24 @@ def _format_bytes(memory_bytes: int | None) -> str:
 
 
 def _build_slack_payload(action: dict) -> dict:
-    status = action.get("status", "unknown")
     container = action.get("container", "unknown")
-    policy = action.get("policy", "unknown")
     reason = action.get("reason") or action.get("error") or ""
+    title = _title_for_action(action)
+    mode = _mode_label(action)
+    result = _action_result(action)
+    primary_label, primary_limits = _primary_limits(action)
+    baseline_label, baseline_limits = _baseline_limits(action)
 
-    status_text = _status_label(status)
-    policy_text = _policy_label(policy)
-    text = f"Chost Hunter: {status_text} - {container}"
+    text = f"[{title}] {container}"
     fields = [
-        {"type": "mrkdwn", "text": f"*컨테이너*\n{container}"},
-        {"type": "mrkdwn", "text": f"*상태*\n{status_text}"},
-        {"type": "mrkdwn", "text": f"*정책*\n{policy_text}"},
-        {
-            "type": "mrkdwn",
-            "text": f"*권고 limit*\n{_format_limits(action.get('recommended_limits'))}",
-        },
+        {"type": "mrkdwn", "text": f"*Container*\n{container}"},
+        {"type": "mrkdwn", "text": f"*Mode*\n{mode}"},
+        *_limit_fields(primary_label, primary_limits),
+        *_limit_fields(baseline_label, baseline_limits),
+        {"type": "mrkdwn", "text": f"*Action*\n{result}"},
     ]
-    if action.get("applied_limits"):
-        fields.append({
-            "type": "mrkdwn",
-            "text": f"*적용 limit*\n{_format_limits(action.get('applied_limits'))}",
-        })
     if reason:
-        fields.append({"type": "mrkdwn", "text": f"*사유*\n{reason[:500]}"})
+        fields.append({"type": "mrkdwn", "text": f"*Reason*\n{reason[:500]}"})
 
     return {
         "text": text,
@@ -135,6 +214,8 @@ def _send_slack_payload(webhook_url: str, payload: dict) -> tuple[bool, str | No
 
 def _is_routine_noop_recommendation(action: dict) -> bool:
     """Suppress per-loop recommendations that did not change any limit."""
+    if not config.SLACK_NOTIFY_ONLY_CHANGES:
+        return False
     reason = action.get("reason") or ""
     return (
         action.get("status") == "recommended"
@@ -168,6 +249,7 @@ def notify_action(action: dict) -> None:
     if status not in config.SLACK_NOTIFY_STATUSES:
         return
     if _is_routine_noop_recommendation(action):
+        _record_notification(action, "suppressed", "routine no-op recommendation")
         return
 
     webhook_url = slack["webhook_url"]
